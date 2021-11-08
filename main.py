@@ -1,7 +1,7 @@
 
 import requests
 import json
-import asyncio
+import hashlib
 
 stop_url = 'https://storage.googleapis.com/linkingplatform.appspot.com/cache/stopV3.json'
 route_url = 'https://storage.googleapis.com/linkingplatform.appspot.com/cache/routeV3.json'
@@ -28,34 +28,6 @@ for route in routes:
     final_routes[route['id']] = route
 
 
-# get routes stops data
-loop = asyncio.get_event_loop()
-process = []
-tasks = []
-
-async def check_route_api(sid, bounding, id, p, r):
-    url = "https://api.linkingapp.com/HKBussez/v3/route/{}/{}".format(sid, bounding)
-    res = await loop.run_in_executor(None,requests.get,url)
-    p.append(id)
-    print(" check point: {} / {}".format(len(p), len(tasks)))
-
-    json_data = res.json()
-    if len(json_data) > 1 :
-        print(" >1 : ", id)
-    r[id] = json_data[0]
-
-for key, route in final_routes.items():
-    if "LWB" in route['company']['code'] or "KMB" in route['company']['code'] or "NLB" in route['company']['code'] or "CTB" in route['company']['code']:
-        task = loop.create_task(check_route_api(route['sId'], route['bounding'], route['id'], process, final_routes))
-        tasks.append(task)
-
-#test
-# task = loop.create_task(check_route_api(1468, 1, 5734, process, final_routes))
-# tasks.append(task)
-
-loop.run_until_complete(asyncio.wait(tasks))
-
-
 
 #output file
 with open('routes.json', 'w', encoding='utf-8') as f:
@@ -64,3 +36,21 @@ with open('routes.json', 'w', encoding='utf-8') as f:
 with open('stops.json', 'w', encoding='utf-8') as f:
     json.dump(stops, f, ensure_ascii=False)
 
+
+#md5
+with open("routes.json", "rb") as f:
+    routes_hash = hashlib.md5()
+    while chunk := f.read(8192):
+        routes_hash.update(chunk)
+
+with open('routes.md5', 'w', encoding='utf-8') as f:
+    f.write(routes_hash.hexdigest())
+
+
+with open("stops.json", "rb") as f:
+    stops_hash = hashlib.md5()
+    while chunk := f.read(8192):
+        stops_hash.update(chunk)
+
+with open('stops.md5', 'w', encoding='utf-8') as f:
+    f.write(stops_hash.hexdigest())
